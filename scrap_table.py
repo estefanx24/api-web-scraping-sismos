@@ -4,7 +4,7 @@ import boto3
 from bs4 import BeautifulSoup
 
 def lambda_handler(event, context):
-    url = "https://ultimosismo.igp.gob.pe/ultimosismo/ajxob/2024"
+    url = "https://ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/2024"
     response = requests.get(url)
 
     # Verificar el estado de la respuesta
