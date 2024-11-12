@@ -1,26 +1,23 @@
 import requests
 import uuid
 import boto3
-from bs4 import BeautifulSoup
 
 def lambda_handler(event, context):
     url = "https://ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/2024"
     response = requests.get(url)
-
-    # Verificar el estado de la respuesta
+    
+    # Verificar si la solicitud fue exitosa
     if response.status_code != 200:
         return {
             'statusCode': response.status_code,
             'body': 'Error al acceder a la página web'
         }
     
-    # Parsear la respuesta JSON
-    data = response.json()
+    # Parsear y ordenar los datos
+    sismos = response.json()
+    sismos_ordenados = sorted(sismos, key=lambda x: x["createdAt"], reverse=True)[:10]  # Obtener los 10 últimos
     
-    # Obtener los 10 últimos sismos y ordenarlos por fecha
-    recent_earthquakes = sorted(data, key=lambda x: x["createdAt"], reverse=True)[:10]
-
-    # Configuración de DynamoDB
+    # Conexión a DynamoDB
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table('TablaWebScrappingPropuesto')
     
@@ -29,19 +26,16 @@ def lambda_handler(event, context):
         for item in table.scan()['Items']:
             batch.delete_item(Key={'id': item['id']})
 
-    # Insertar los datos en DynamoDB
-    for index, earthquake in enumerate(recent_earthquakes, start=1):
-        item = {
-            'id': str(uuid.uuid4()),
-            'nro': index,
-            'fecha': earthquake['createdAt'],
-            'magnitud': earthquake.get('magnitude', 'N/A'),  # Ajusta según el formato de la API
-            'profundidad': earthquake.get('depth', 'N/A'),  # Ajusta según el formato de la API
-            'ubicación': earthquake.get('location', 'N/A')  # Ajusta según el formato de la API
-        }
-        table.put_item(Item=item)
+    # Insertar nuevos registros y construir la respuesta
+    arrreturn = []
+    for i, sismo in enumerate(sismos_ordenados, start=1):
+        sismo['id'] = str(uuid.uuid4())
+        sismo['#'] = i
+        arrreturn.append(sismo)
+        table.put_item(Item=sismo)
 
+    # Devolver los datos de los últimos 10 sismos
     return {
         'statusCode': 200,
-        'body': 'Datos de los últimos 10 sismos almacenados exitosamente'
+        'body': arrreturn
     }
