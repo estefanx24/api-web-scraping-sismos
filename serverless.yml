@@ -1,0 +1,37 @@
+org: aron18
+service: api-web-scraping-sismos  # Nombre descriptivo del servicio
+
+provider:
+  name: aws
+  runtime: python3.12
+  memorySize: 1024
+  timeout: 30
+  iam:
+    role: arn:aws:iam::637423363021:role/LabRole  # Rol IAM para los permisos necesarios
+
+functions:
+  scrap_sismos:
+    handler: scrap_table.lambda_handler  # Actualizado para coincidir con el archivo y función
+    package:
+      include:
+        - ./**  # Incluir todo el contenido del directorio
+    events:
+      - http:
+          path: /scrape_sismos
+          method: get
+          cors: true
+          integration: lambda
+
+resources:
+  Resources:
+    TablaWebScrappingSismos:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TablaWebScrappingPropuesto  # Asegúrate de que coincida con el nombre en tu código Python
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST  # Modo de facturación por solicitud
